@@ -47,9 +47,10 @@ module Audited
         # don't allow multiple calls
         return if self.included_modules.include?(Audited::Auditor::AuditedInstanceMethods)
 
-        class_attribute :non_audited_columns,   :instance_writer => false
-        class_attribute :auditing_enabled,      :instance_writer => false
-        class_attribute :audit_associated_with, :instance_writer => false
+        class_attribute :non_audited_columns,       :instance_writer => false
+        class_attribute :auditing_enabled,          :instance_writer => false
+        class_attribute :audit_associated_with,     :instance_writer => false
+        class_attribute :ignore_immaterial_changes, :instance_writer => false
 
         if options[:only]
           except = self.column_names - options[:only].flatten.map(&:to_s)
@@ -63,6 +64,10 @@ module Audited
         if options[:comment_required]
           validates_presence_of :audit_comment, :if => :auditing_enabled
           before_destroy :require_comment
+        end
+
+        if options[:ignore_immaterial_changes]
+          self.ignore_immaterial_changes = options[:ignore_immaterial_changes]
         end
 
         attr_accessor :audit_comment
@@ -93,6 +98,12 @@ module Audited
       def has_associated_audits
         has_many :associated_audits, :as => :associated, :class_name => Audited.audit_class.name
       end
+
+      def immaterial_change?(old_value, new_value)
+        return false if old_value.to_s.strip == new_value.to_s.strip # treat nils and whitespace changes as immaterial
+        true
+      end
+
     end
 
     module AuditedInstanceMethods
@@ -176,7 +187,7 @@ module Audited
 
       def audited_changes
         changed_attributes.except(*non_audited_columns).inject({}) do |changes,(attr, old_value)|
-          changes[attr] = [old_value, self[attr]]
+          changes[attr] = [old_value, self[attr]] unless ignore_immaterial_changes && !self.class.immaterial_change?(old_value, self[attr])
           changes
         end
       end

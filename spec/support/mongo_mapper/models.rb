@@ -15,7 +15,7 @@ module Models
       key :logins, Integer, :default => 0
       timestamps!
 
-      audited :allow_mass_assignment => true, :except => :password
+      audited :allow_mass_assignment => true, :except => :password, :ignore_immaterial_changes => true
 
       attr_protected :logins
 

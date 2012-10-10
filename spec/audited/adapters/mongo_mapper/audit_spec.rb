@@ -82,6 +82,18 @@ describe Audited::Adapters::MongoMapper::Audit, :adapter => :mongo_mapper do
       revision.should be_a_new_record
     end
 
+    it "should ignore immaterial changes" do
+
+      user = Models::MongoMapper::User.create name: "Steve", username: nil
+      user.update_attribute :username, "   "
+      user.audits.count.should be(1)
+
+      user = Models::MongoMapper::User.create name: "Steve", username: "12345"
+      user.update_attribute :username, 12345
+      user.audits.count.should be(1)
+
+    end
+
   end
 
   it "should set the version number on create" do
