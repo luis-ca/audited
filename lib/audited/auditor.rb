@@ -223,6 +223,9 @@ module Audited
 
       def write_audit(attrs)
         attrs[:associated] = self.send(audit_associated_with) unless audit_associated_with.nil?
+
+        self.changed_attributes.clear if defined?(MongoMapper::EmbeddedDocument) && self.class.included_modules.include?(MongoMapper::EmbeddedDocument)
+
         self.audit_comment = nil
         run_callbacks(:audit)  { self.audits.create(attrs) } if auditing_enabled
       end
