@@ -210,10 +210,18 @@ module Audited
       end
 
       def audit_update
+
         unless (changes = audited_changes).empty? && audit_comment.blank?
-          write_audit(:action => 'update', :audited_changes => changes,
-                      :comment => audit_comment)
+
+          if defined?(MongoMapper::EmbeddedDocument) && self.class.included_modules.include?(MongoMapper::EmbeddedDocument)
+            write_audit(:action => 'update', :audited_changes => changes, :comment => audit_comment) unless self.new?
+            self.changed_attributes.clear
+          else
+            write_audit(:action => 'update', :audited_changes => changes, :comment => audit_comment)
+          end
+
         end
+        
       end
 
       def audit_destroy
@@ -223,9 +231,6 @@ module Audited
 
       def write_audit(attrs)
         attrs[:associated] = self.send(audit_associated_with) unless audit_associated_with.nil?
-
-        self.changed_attributes.clear if defined?(MongoMapper::EmbeddedDocument) && self.class.included_modules.include?(MongoMapper::EmbeddedDocument)
-
         self.audit_comment = nil
         run_callbacks(:audit)  { self.audits.create(attrs) } if auditing_enabled
       end
